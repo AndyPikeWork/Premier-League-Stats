@@ -1,0 +1,131 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[1]:
+
+
+import requests
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import csv
+
+
+# In[2]:
+
+
+url = 'https://fantasy.premierleague.com/api/bootstrap-static/'
+r = requests.get(url)
+json = r.json()
+json.keys()
+elements = pd.DataFrame(json['elements'])
+element_types = pd.DataFrame(json['element_types'])
+teams = pd.DataFrame(json['teams'])
+
+
+# In[3]:
+
+
+players = pd.merge(elements,teams,left_on="team_code",right_on="code")
+
+
+# In[4]:
+
+
+players = pd.merge(players,element_types,left_on="element_type",right_on="id")
+
+
+# In[5]:
+
+
+slim = players[["first_name", "second_name", "photo", "singular_name_short","short_name", "total_points","strength", "goals_scored", "assists", "now_cost", "minutes", "strength", "clean_sheets", "ict_index", "bps", "chance_of_playing_this_round",  "chance_of_playing_next_round", "saves","in_dreamteam"]]
+slim.head()
+
+
+# In[6]:
+
+
+weights = [['total_points', 0.4],
+       ['strength', 0.2],
+       ['goals_scored', 0.1],
+       ['clean_sheets', 0.2],
+       ['assists', 0.1],
+      ]
+
+
+# In[17]:
+
+
+slim.to_csv('out.csv', index=False)
+
+
+# In[8]:
+
+
+
+active = slim.loc[(slim['minutes'] > 1) & (slim['chance_of_playing_next_round'] > 0)]
+active.head()
+
+
+# In[9]:
+
+
+print("Total points: ", active['total_points'].sum(),
+      "\n",
+      "Total active players: ", active['total_points'].count(),
+      "\n",
+      "Total dormant players: ", slim['total_points'].count(),
+      "\n",
+      "Average points: ", round(active['total_points'].mean())
+     )
+
+
+# In[10]:
+
+
+midfielders = slim[slim["singular_name_short"] == "MID"]
+midfielders.head()
+
+
+# In[11]:
+
+
+print("Total points: ", midfielders['total_points'].sum(),
+      "\n",
+      "Total players: ", midfielders['total_points'].count(),
+      "\n",
+      "Average points: ", round(midfielders['total_points'].mean())
+     )
+
+
+# In[12]:
+
+
+slim[['singular_name_short','total_points']].groupby(['singular_name_short'], dropna=False).agg(['mean', 'count','std'])
+
+
+# In[13]:
+
+
+team_coordinates = slim[['short_name','total_points']].groupby(['short_name']).agg(['mean'])
+team_coordinates.head()
+
+
+# In[14]:
+
+
+#pd.DataFrame(team_coordinates.values).to_numpy()
+an_array = team_coordinates.values.flatten()
+
+print(an_array)
+
+
+# In[16]:
+
+
+plt.bar(team_coordinates.index,an_array)
+plt.rcParams['figure.figsize'] = [10,5]
+plt.show
+
+
+# In[ ]:
